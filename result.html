@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>추천 결과 — 스파르타 북큐레이션</title>
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #FA0030;
+      --black: #222222;
+      --gray: #8C8C8C;
+      --light-gray: #F5F5F5;
+      --white: #FFFFFF;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--black);
+      background: var(--white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ───── HEADER ───── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 60px;
+      background: var(--white);
+      border-bottom: 1px solid rgba(0,0,0,0.11);
+      display: flex;
+      align-items: center;
+      padding: 0 40px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--black);
+    }
+
+    .logo-mark {
+      width: 28px; height: 28px;
+      background: var(--red);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .logo-mark svg { width: 16px; height: 16px; fill: white; }
+
+    .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-text span { color: var(--red); }
+
+    /* ───── LOADING ───── */
+    #loading {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 60px 40px;
+    }
+
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--light-gray);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+    .loading-sub { font-size: 14px; color: var(--gray); }
+
+    /* ───── RESULT ───── */
+    #result {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    /* 결과 헤더 배너 */
+    .result-banner {
+      background: var(--black);
+      color: var(--white);
+      padding: 56px 40px 48px;
+      text-align: center;
+    }
+
+    .result-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .meta-tag {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.75);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 100px;
+      letter-spacing: -0.2px;
+    }
+
+    .meta-tag.red {
+      background: var(--red);
+      color: var(--white);
+    }
+
+    .result-banner h2 {
+      font-size: clamp(22px, 4vw, 36px);
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+    }
+
+    .result-banner h2 em {
+      font-style: normal;
+      color: var(--red);
+    }
+
+    .result-concern {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.6;
+      letter-spacing: -0.2px;
+    }
+
+    .result-concern strong {
+      color: rgba(255,255,255,0.85);
+      font-weight: 600;
+    }
+
+    /* ───── 책 목록 ───── */
+    .books-section {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 56px 40px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--red);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .book-card {
+      display: flex;
+      gap: 28px;
+      padding: 32px;
+      border: 1.5px solid #E8E8E8;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .book-card:hover {
+      border-color: #D0D0D0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    }
+
+    .book-number {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      font-size: 48px;
+      font-weight: 900;
+      color: rgba(0,0,0,0.04);
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .book-cover {
+      flex-shrink: 0;
+      width: 90px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .book-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .book-info { flex: 1; min-width: 0; }
+
+    .book-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .book-author {
+      font-size: 13px;
+      color: var(--gray);
+      margin-bottom: 14px;
+      letter-spacing: -0.2px;
+    }
+
+    .book-reason {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #444;
+      letter-spacing: -0.2px;
+      margin-bottom: 16px;
+    }
+
+    .book-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 100px;
+      letter-spacing: -0.1px;
+    }
+
+    .tag-value {
+      background: #fff0f2;
+      color: var(--red);
+    }
+
+    .tag-rule {
+      background: var(--light-gray);
+      color: #555;
+    }
+
+    /* ───── 액션 버튼 ───── */
+    .action-section {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 40px 60px;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      padding-top: 8px;
+    }
+
+    .btn {
+      height: 52px;
+      border-radius: 10px;
+      font-family: 'Pretendard', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: -0.3px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      border: none;
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: var(--black);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      background: var(--red);
+      box-shadow: 0 6px 20px rgba(250,0,48,0.3);
+    }
+
+    .btn-secondary {
+      flex: 1;
+      background: var(--white);
+      color: var(--black);
+      border: 1.5px solid #E8E8E8 !important;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--black) !important;
+      background: var(--light-gray);
+    }
+
+    /* ───── FOOTER ───── */
+    footer {
+      padding: 24px 40px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .footer-text { font-size: 13px; color: #BBBBBB; }
+    .footer-logo { font-size: 13px; font-weight: 700; color: #BBBBBB; }
+    .footer-logo span { color: var(--red); }
+
+    /* ───── RESPONSIVE ───── */
+    @media (max-width: 640px) {
+      header { padding: 0 20px; }
+      .result-banner { padding: 40px 20px 36px; }
+      .books-section { padding: 40px 20px; }
+      .action-section { padding: 0 20px 48px; }
+      .book-card { flex-direction: column; padding: 24px 20px; gap: 20px; }
+      .book-cover { width: 72px; height: 96px; }
+      .action-bar { flex-direction: column; }
+      footer { padding: 20px; flex-direction: column; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 16 16"><path d="M3 2h10v2H3zM3 7h10v2H3zM3 12h7v2H3z"/></svg>
+      </div>
+      <span class="logo-text"><span>SPARTA</span> BOOK</span>
+    </a>
+  </header>
+
+  <!-- LOADING -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">AI가 책을 고르는 중...</div>
+    <div class="loading-sub">팀스파르타 핵심가치와 그라운드룰을 분석하고 있어요</div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result">
+
+    <!-- 배너 -->
+    <div class="result-banner">
+      <div class="result-meta">
+        <span class="meta-tag red" id="yearsTag">2~3년차</span>
+        <span class="meta-tag">AI 추천 완료</span>
+      </div>
+      <h2><em>딱 맞는 책 3권</em>을<br />찾았어요</h2>
+      <p class="result-concern">
+        고민: <strong id="concernPreview"></strong>
+      </p>
+    </div>
+
+    <!-- 책 카드 -->
+    <div class="books-section">
+      <div class="section-title">📚 추천 도서</div>
+
+      <!-- 책 1 -->
+      <div class="book-card">
+        <span class="book-number">01</span>
+        <div class="book-cover">
+          <div class="book-cover-placeholder" style="background: linear-gradient(135deg, #FA0030, #ff6b6b);">📖</div>
+        </div>
+        <div class="book-info">
+          <div class="book-title">피드백 임파서블</div>
+          <div class="book-author">김성준 · 한빛비즈</div>
+          <div class="book-reason">
+            "피드백은 자작(자주, 작게)하게"라는 팀스파르타 그라운드룰 #8과 정확히 맞닿아 있는 책입니다.
+            상대가 방어적이 되지 않으면서도 변화를 이끌어내는 피드백 기술을 다루고 있어,
+            <strong>말을 예쁘게 하는 사람</strong>이라는 인재상과도 완벽하게 연결됩니다.
+          </div>
+          <div class="book-tags">
+            <span class="tag tag-value">진정성있게</span>
+            <span class="tag tag-rule">#8 피드백은 자작하게</span>
+            <span class="tag tag-rule">인재상 · 말을 예쁘게</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 책 2 -->
+      <div class="book-card">
+        <span class="book-number">02</span>
+        <div class="book-cover">
+          <div class="book-cover-placeholder" style="background: linear-gradient(135deg, #0D1B2A, #1e3a5f);">📘</div>
+        </div>
+        <div class="book-info">
+          <div class="book-title">함께 자라기</div>
+          <div class="book-author">김창준 · 인사이트</div>
+          <div class="book-reason">
+            빠른 실행과 반복적인 성장을 핵심으로 하는 책으로, 팀스파르타의 <strong>빠르게</strong> 핵심가치와 직결됩니다.
+            애자일 방식으로 협업하고 서로 피드백하며 함께 성장하는 방법을 다루며,
+            그라운드룰 #10 "나의 작은 행동 하나가 문화의 씨앗"이라는 철학과 깊이 공명합니다.
+          </div>
+          <div class="book-tags">
+            <span class="tag tag-value">빠르게</span>
+            <span class="tag tag-rule">#10 문화의 씨앗</span>
+            <span class="tag tag-rule">인재상 · 성장을 갈망하는</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 책 3 -->
+      <div class="book-card">
+        <span class="book-number">03</span>
+        <div class="book-cover">
+          <div class="book-cover-placeholder" style="background: linear-gradient(135deg, #2d6a4f, #52b788);">📗</div>
+        </div>
+        <div class="book-info">
+          <div class="book-title">레디컬 캔더</div>
+          <div class="book-author">킴 스콧 · 청림출판</div>
+          <div class="book-reason">
+            "직접적으로 도전하고, 인간적으로 배려하라"는 원칙을 담은 책입니다.
+            그라운드룰 #7 "이끌거나 따르거나"와 #2 "안돼요 대신 이렇게 하면 어때요?"의 정신이 책 전반에 녹아 있어,
+            <strong>리더십과 솔직한 소통</strong>을 고민하는 분께 강력히 추천합니다.
+          </div>
+          <div class="book-tags">
+            <span class="tag tag-value">와우하게</span>
+            <span class="tag tag-rule">#7 이끌거나 따르거나</span>
+            <span class="tag tag-rule">#2 대안을 제시하라</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 액션 버튼 -->
+    <div class="action-section">
+      <div class="action-bar">
+        <button class="btn btn-secondary" onclick="copyLink()">
+          🔗 결과 공유하기
+        </button>
+        <a class="btn btn-primary" href="index.html">
+          ↩ 다시 추천받기
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-text">© 2026 팀스파르타 내부 서비스</span>
+    <span class="footer-logo"><span>SPARTA</span> BOOK CURATION</span>
+  </footer>
+
+  <script>
+    // URL 파라미터 파싱
+    const params = new URLSearchParams(window.location.search);
+    const years = params.get('years') || '2~3년차';
+    const concern = params.get('concern') || '';
+
+    // 배너에 값 반영
+    document.getElementById('yearsTag').textContent = years;
+    const preview = concern.length > 40 ? concern.slice(0, 40) + '...' : concern;
+    document.getElementById('concernPreview').textContent = preview || '고민 내용';
+
+    // 로딩 → 결과 전환 (1.8초 시뮬레이션)
+    setTimeout(() => {
+      document.getElementById('loading').style.display = 'none';
+      const resultEl = document.getElementById('result');
+      resultEl.style.display = 'flex';
+      resultEl.style.flexDirection = 'column';
+    }, 1800);
+
+    // 링크 복사
+    function copyLink() {
+      navigator.clipboard.writeText(window.location.href)
+        .then(() => alert('링크가 복사됐어요! 동료에게 공유해보세요 📚'))
+        .catch(() => alert('링크 복사에 실패했어요.'));
+    }
+  </script>
+</body>
+</html>
